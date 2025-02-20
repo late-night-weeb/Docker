@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  qbittorrent-exporter:
+    image: caseyscarborough/qbittorrent-exporter:latest
+    container_name: qbittorrent-exporter
+    restart: always
+    environment:
+      QBITTORRENT_USERNAME: USER
+      QBITTORRENT_PASSWORD: PASSWD
+      QBITTORRENT_BASE_URL: http://qbittorrent-nox:8080
+    ports:
+      - "17871:17871"
+    networks:
+      - vpn_network
+
+  qbittorrent-nox:
+    image: qbittorrentofficial/qbittorrent-nox:latest
+    restart: always
+    environment:
+      - QBT_LEGAL_NOTICE=confirm
+      - QBT_WEBUI_PORT=8080
+    depends_on:
+      - gluetun
+    stop_grace_period: 30m
+    tmpfs:
+      - /tmp
+    tty: true
+    volumes:
+      - /path/to/config:/config
+      - /path/to/download:/path/to/download
+    network_mode: "service:gluetun"
+
+
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - vpn_network
+    ports:
+      - 8080:8080/tcp  # Forward qBittorrent Web UI
+      - 8888:8888/tcp  # HTTP proxy (optional)
+      - 8388:8388/tcp  # Shadowsocks (optional)
+      - 8388:8388/udp  # Shadowsocks (optional)
+    volumes:
+      - /path/to/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=put_your_key_here
+      - WIREGUARD_ADDRESSES=put_ip_here
+      - SERVER_CITIES=put_region_here
+
+
+
+networks:
+  vpn_network:
+    external: true
